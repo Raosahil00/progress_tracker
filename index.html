@@ -1,0 +1,1236 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive Progress Tracking Tree with Shared Nodes Centered</title>
+  <style>
+    /* Reset and base */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+      background: #f9fafb;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+    }
+    h1 {
+      margin-bottom: 1rem;
+      font-weight: 700;
+      color: #111827;
+      text-align: center;
+    }
+
+    /* Container */
+    #app {
+      max-width: 960px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Form styles */
+    form {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-end;
+      position: relative;
+    }
+    form > * {
+      flex: 1 1 150px;
+      min-width: 150px;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #374151;
+    }
+    input[type="text"],
+    textarea,
+    select {
+      margin-top: 0.25rem;
+      padding: 0.4rem 0.5rem;
+      border: 1.5px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-family: inherit;
+      resize: vertical;
+      transition: border-color 0.2s ease;
+    }
+    input[type="text"]:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px rgb(59 130 246 / 0.3);
+    }
+    textarea {
+      min-height: 60px;
+      max-height: 120px;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0.6rem 1.2rem;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      flex: 0 0 auto;
+      user-select: none;
+    }
+    button:disabled {
+      background-color: #93c5fd;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background-color: #1d4ed8;
+    }
+
+    /* Tree container */
+    #tree-container {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+      overflow-x: auto;
+      overflow-y: visible;
+      min-height: 300px;
+      position: relative;
+    }
+
+    /* Tree styles */
+    .tree-node {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 140px;
+      max-width: 180px;
+      margin: 0 1rem;
+      font-size: 0.9rem;
+      user-select: none;
+    }
+    .node-circle {
+      width: 70px;
+      height: 70px;
+      background-color: #3b82f6;
+      border-radius: 50%;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 0.5rem;
+      box-shadow: 0 2px 6px rgb(59 130 246 / 0.5);
+      cursor: pointer;
+      position: relative;
+      transition: background-color 0.3s ease;
+    }
+    .node-circle:hover {
+      background-color: #2563eb;
+    }
+    .node-name {
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.2;
+      overflow-wrap: break-word;
+      max-height: 3.6em; /* max 3 lines */
+      overflow: hidden;
+    }
+    .node-status {
+      margin-top: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.1rem 0.4rem;
+      border-radius: 12px;
+      background-color: #e0e7ff;
+      color: #3730a3;
+      user-select: none;
+      max-width: 100%;
+      text-align: center;
+    }
+    .node-description {
+      margin-top: 0.3rem;
+      font-size: 0.75rem;
+      color: #4b5563;
+      max-height: 3.6em;
+      overflow: hidden;
+      text-align: center;
+      padding: 0 0.3rem;
+    }
+
+    /* Children container */
+    .children-container {
+      display: flex;
+      justify-content: center;
+      margin-top: 1.5rem;
+      gap: 1rem;
+      position: relative;
+    }
+
+    /* Lines connecting nodes */
+    .line-vertical {
+      position: absolute;
+      width: 2px;
+      background-color: #9ca3af;
+      top: 0;
+      bottom: 50%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 0;
+    }
+    .line-horizontal {
+      position: absolute;
+      height: 2px;
+      background-color: #9ca3af;
+      top: 50%;
+      left: 0;
+      right: 0;
+      z-index: 0;
+    }
+
+    /* Expand/collapse icon */
+    .expand-icon {
+      position: absolute;
+      bottom: -10px;
+      right: -10px;
+      background: white;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      border: 2px solid #2563eb;
+      color: #2563eb;
+      font-size: 14px;
+      line-height: 18px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color 0.2s ease, color 0.2s ease;
+      z-index: 10;
+    }
+    .expand-icon:hover {
+      background-color: #2563eb;
+      color: white;
+    }
+
+    /* Context menu */
+    .context-menu {
+      position: absolute;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+      z-index: 1000;
+      min-width: 140px;
+      font-size: 0.9rem;
+      user-select: none;
+    }
+    .context-menu button {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      background: none;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      color: #374151;
+      transition: background-color 0.15s ease;
+      border-radius: 0;
+    }
+    .context-menu button:hover {
+      background-color: #e0e7ff;
+      color: #2563eb;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      form > * {
+        flex: 1 1 auto;
+        min-width: auto;
+      }
+      .tree-node {
+        min-width: 120px;
+        max-width: 140px;
+        margin: 0 0.5rem;
+      }
+      .node-circle {
+        width: 60px;
+        height: 60px;
+        font-size: 0.85rem;
+      }
+      .expand-icon {
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        line-height: 16px;
+        bottom: -8px;
+        right: -8px;
+      }
+    }
+
+    /* Modal styles */
+    #commonParentModal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+    #commonParentModal.active {
+      display: flex;
+    }
+    #commonParentModal .modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    #commonParentModal h2 {
+      margin: 0;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: #111827;
+    }
+    #commonParentModal .parents-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    #commonParentModal .parents-list label {
+      font-weight: 600;
+      color: #374151;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    #commonParentModal .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+    #commonParentModal button {
+      padding: 0.5rem 1rem;
+      font-weight: 700;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s ease;
+    }
+    #commonParentModal button#modalCancelBtn {
+      background: #ef4444;
+      color: white;
+    }
+    #commonParentModal button#modalCancelBtn:hover {
+      background: #b91c1c;
+    }
+    #commonParentModal button#modalConfirmBtn {
+      background: #2563eb;
+      color: white;
+    }
+    #commonParentModal button#modalConfirmBtn:disabled {
+      background: #93c5fd;
+      cursor: not-allowed;
+    }
+    #commonParentModal button#modalConfirmBtn:hover:not(:disabled) {
+      background: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+  <h1>Interactive Progress Tracking Tree with Shared Nodes Centered</h1>
+  <div id="app" role="main" aria-label="Progress Tracking Tree Application">
+    <form id="node-form" aria-label="Add or Edit Node Form" novalidate>
+      <label for="taskName">Task Name <sup aria-hidden="true">*</sup>
+        <input type="text" id="taskName" name="taskName" required autocomplete="off" aria-required="true" />
+      </label>
+      <label for="taskDescription">Description
+        <textarea id="taskDescription" name="taskDescription" rows="2" autocomplete="off"></textarea>
+      </label>
+      <label for="taskStatus">Status
+        <select id="taskStatus" name="taskStatus" aria-label="Select task status">
+          <option value="">None</option>
+          <option value="Not Started">Not Started</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+        </select>
+      </label>
+      <label for="parentNodeSelect">Parent Node
+        <select id="parentNodeSelect" name="parentNodeSelect" aria-label="Select parent node for new task">
+          <option value="">-- Add as Main Node --</option>
+        </select>
+      </label>
+      <label for="commonAddCheckbox" style="flex: 0 0 100%; font-weight: 600; color: #374151; user-select:none; display:flex; align-items:center; gap:0.5rem;">
+        <input type="checkbox" id="commonAddCheckbox" name="commonAddCheckbox" aria-label="Add this node as common child to selected parent nodes" />
+        Add as common child to selected parent nodes
+      </label>
+      <button type="submit" id="submitBtn">Add Node</button>
+      <button type="button" id="cancelEditBtn" style="display:none; background-color:#ef4444; margin-left: 0.5rem;">Cancel Edit</button>
+    </form>
+
+    <div id="tree-container" aria-label="Progress Tracking Tree Visualization" tabindex="0" style="position:relative;"></div>
+  </div>
+
+  <!-- Modal for selecting multiple parent nodes -->
+  <div id="commonParentModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDesc">
+    <div class="modal-content">
+      <h2 id="modalTitle">Select Parent Nodes</h2>
+      <div id="modalDesc" style="font-size:0.9rem; color:#4b5563;">
+        Choose one or more parent nodes to add this task as a child.
+      </div>
+      <div class="parents-list" id="parentsList" tabindex="0" aria-label="List of parent nodes to select">
+        <!-- dynamically filled -->
+      </div>
+      <div class="modal-buttons">
+        <button type="button" id="modalCancelBtn">Cancel</button>
+        <button type="button" id="modalConfirmBtn" disabled>Add</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // Data structure for nodes
+      // Each node: { id, name, description, status, children: [], expanded: true, parents: Set }
+      // parents: Set of parent node ids (to allow shared nodes)
+      let treeData = [];
+      let nodeIdCounter = 1;
+
+      // State for editing
+      let editingNodeId = null;
+
+      // DOM elements
+      const form = document.getElementById("node-form");
+      const taskNameInput = document.getElementById("taskName");
+      const taskDescriptionInput = document.getElementById("taskDescription");
+      const taskStatusSelect = document.getElementById("taskStatus");
+      const parentNodeSelect = document.getElementById("parentNodeSelect");
+      const submitBtn = document.getElementById("submitBtn");
+      const cancelEditBtn = document.getElementById("cancelEditBtn");
+      const treeContainer = document.getElementById("tree-container");
+      const commonAddCheckbox = document.getElementById("commonAddCheckbox");
+
+      // Modal elements
+      const commonParentModal = document.getElementById("commonParentModal");
+      const parentsList = document.getElementById("parentsList");
+      const modalCancelBtn = document.getElementById("modalCancelBtn");
+      const modalConfirmBtn = document.getElementById("modalConfirmBtn");
+
+      // Map of nodeId to node object for quick lookup
+      // Will be rebuilt on each render
+      let nodeMap = new Map();
+
+      // Utility: Build nodeMap for quick lookup
+      function buildNodeMap() {
+        nodeMap.clear();
+        function traverse(nodes) {
+          for (const node of nodes) {
+            nodeMap.set(node.id, node);
+            if (node.children.length > 0) traverse(node.children);
+          }
+        }
+        traverse(treeData);
+      }
+
+      // Utility: Find node by id
+      function findNodeById(id) {
+        return nodeMap.get(id) || null;
+      }
+
+      // Utility: Find parents of a node (returns array of parent nodes)
+      function findParents(node) {
+        if (!node.parents || node.parents.size === 0) return [];
+        const parents = [];
+        node.parents.forEach(pid => {
+          const p = findNodeById(pid);
+          if (p) parents.push(p);
+        });
+        return parents;
+      }
+
+      // Utility: Remove child reference from a parent node
+      function removeChildFromParent(childId, parentNode) {
+        parentNode.children = parentNode.children.filter(c => c.id !== childId);
+      }
+
+      // Utility: Remove node completely from treeData and parents
+      function removeNodeCompletely(nodeId) {
+        const node = findNodeById(nodeId);
+        if (!node) return;
+        // Remove from all parents' children arrays
+        if (node.parents) {
+          node.parents.forEach(pid => {
+            const p = findNodeById(pid);
+            if (p) removeChildFromParent(nodeId, p);
+          });
+        }
+        // If node is root (no parents), remove from treeData
+        if (!node.parents || node.parents.size === 0) {
+          treeData = treeData.filter(n => n.id !== nodeId);
+        }
+        // Remove children recursively
+        node.children.forEach(child => {
+          // Remove this node from child's parents
+          if (child.parents) {
+            child.parents.delete(nodeId);
+            // If child has no other parents, remove child completely
+            if (child.parents.size === 0) {
+              removeNodeCompletely(child.id);
+            }
+          }
+        });
+        nodeMap.delete(nodeId);
+      }
+
+      // Utility: Flatten tree to array for parent select options (all nodes)
+      function flattenTree(nodes = treeData, arr = []) {
+        for (const node of nodes) {
+          arr.push({ id: node.id, name: node.name });
+          if (node.children.length > 0) {
+            flattenTree(node.children, arr);
+          }
+        }
+        return arr;
+      }
+
+      // Render parent node select options
+      function renderParentNodeOptions() {
+        const nodes = flattenTree();
+        // Clear options except first
+        parentNodeSelect.innerHTML = '<option value="">-- Add as Main Node --</option>';
+        for (const node of nodes) {
+          const option = document.createElement("option");
+          option.value = node.id;
+          option.textContent = node.name;
+          parentNodeSelect.appendChild(option);
+        }
+      }
+
+      // Create lines connecting nodes including shared nodes
+      function createConnectionLines() {
+        // Remove old lines
+        const oldLines = treeContainer.querySelectorAll(".connection-line");
+        oldLines.forEach(line => line.remove());
+
+        // We'll draw lines for each parent-child connection (including shared nodes)
+        // For that, find all node elements and map by id
+        const nodeElems = new Map();
+        treeContainer.querySelectorAll(".tree-node").forEach(elem => {
+          const id = parseInt(elem.dataset.id, 10);
+          if (!isNaN(id)) nodeElems.set(id, elem);
+        });
+
+        // Draw lines for each parent-child pair
+        nodeMap.forEach(node => {
+          if (!node.parents || node.parents.size === 0) return; // root nodes have no parents
+          node.parents.forEach(parentId => {
+            const parentElem = nodeElems.get(parentId);
+            const childElem = nodeElems.get(node.id);
+            if (!parentElem || !childElem) return;
+
+            const parentCircle = parentElem.querySelector(".node-circle");
+            const childCircle = childElem.querySelector(".node-circle");
+            if (!parentCircle || !childCircle) return;
+
+            const containerRect = treeContainer.getBoundingClientRect();
+            const parentRect = parentCircle.getBoundingClientRect();
+            const childRect = childCircle.getBoundingClientRect();
+
+            // Calculate points for lines
+            const parentCenterX = parentRect.left + parentRect.width / 2 - containerRect.left + treeContainer.scrollLeft;
+            const parentBottomY = parentRect.bottom - containerRect.top + treeContainer.scrollTop;
+
+            const childCenterX = childRect.left + childRect.width / 2 - containerRect.left + treeContainer.scrollLeft;
+            const childTopY = childRect.top - containerRect.top + treeContainer.scrollTop;
+
+            // Vertical line from parent bottom to some midpoint
+            const verticalLine = document.createElement("div");
+            verticalLine.className = "connection-line line-vertical";
+            verticalLine.style.position = "absolute";
+            verticalLine.style.backgroundColor = "#9ca3af";
+            verticalLine.style.width = "2px";
+            verticalLine.style.zIndex = "0";
+
+            // Horizontal line connecting vertical lines if multiple children share same parent
+            // We'll draw a horizontal line between parent and child centers
+
+            // Vertical line height is from parent bottom to midpoint between parent and child top
+            const midY = (parentBottomY + childTopY) / 2;
+
+            verticalLine.style.left = `${parentCenterX}px`;
+            verticalLine.style.top = `${parentBottomY}px`;
+            verticalLine.style.height = `${midY - parentBottomY}px`;
+
+            treeContainer.appendChild(verticalLine);
+
+            // Horizontal line from parentCenterX to childCenterX at midY
+            const horizontalLine = document.createElement("div");
+            horizontalLine.className = "connection-line line-horizontal";
+            horizontalLine.style.position = "absolute";
+            horizontalLine.style.backgroundColor = "#9ca3af";
+            horizontalLine.style.height = "2px";
+            horizontalLine.style.zIndex = "0";
+
+            const leftX = Math.min(parentCenterX, childCenterX);
+            const rightX = Math.max(parentCenterX, childCenterX);
+
+            horizontalLine.style.left = `${leftX}px`;
+            horizontalLine.style.top = `${midY}px`;
+            horizontalLine.style.width = `${rightX - leftX}px`;
+
+            treeContainer.appendChild(horizontalLine);
+
+            // Vertical line from midpoint to child top
+            const verticalLine2 = document.createElement("div");
+            verticalLine2.className = "connection-line line-vertical";
+            verticalLine2.style.position = "absolute";
+            verticalLine2.style.backgroundColor = "#9ca3af";
+            verticalLine2.style.width = "2px";
+            verticalLine2.style.zIndex = "0";
+
+            verticalLine2.style.left = `${childCenterX}px`;
+            verticalLine2.style.top = `${midY}px`;
+            verticalLine2.style.height = `${childTopY - midY}px`;
+
+            treeContainer.appendChild(verticalLine2);
+          });
+        });
+      }
+
+      // Render the tree recursively with shared nodes
+      // To avoid infinite loops, track rendered nodes by id
+      function renderTree(nodes = treeData, isRoot = true, rendered = new Set()) {
+        if (!nodes || nodes.length === 0) return null;
+
+        const container = document.createElement("div");
+        container.className = "children-container";
+        if (isRoot) container.style.justifyContent = "center";
+
+        // For centering shared children, we reorder children so that shared nodes appear centered
+        // We'll detect shared children (children with parents.size > 1) and place them in the middle
+
+        // Separate shared and non-shared children
+        const sharedChildren = [];
+        const nonSharedChildren = [];
+
+        nodes.forEach(node => {
+          if (rendered.has(node.id)) return; // avoid cycles
+          if (node.parents && node.parents.size > 1) {
+            sharedChildren.push(node);
+          } else {
+            nonSharedChildren.push(node);
+          }
+        });
+
+        // Sort non-shared children by name for consistent order
+        nonSharedChildren.sort((a,b) => a.name.localeCompare(b.name));
+        sharedChildren.sort((a,b) => a.name.localeCompare(b.name));
+
+        // Merge children: non-shared left, shared centered, non-shared right
+        // We'll split nonSharedChildren into two halves around the center for visual balance
+        const half = Math.ceil(nonSharedChildren.length / 2);
+        const leftNonShared = nonSharedChildren.slice(0, half);
+        const rightNonShared = nonSharedChildren.slice(half);
+
+        // Final children order: leftNonShared + sharedChildren + rightNonShared
+        const finalChildren = [...leftNonShared, ...sharedChildren, ...rightNonShared];
+
+        finalChildren.forEach(node => {
+          if (rendered.has(node.id)) return;
+          rendered.add(node.id);
+
+          const nodeElem = document.createElement("div");
+          nodeElem.className = "tree-node";
+          nodeElem.dataset.id = node.id;
+          if (isRoot) nodeElem.dataset.root = "true";
+
+          // Node circle
+          const circle = document.createElement("div");
+          circle.className = "node-circle";
+          circle.setAttribute("tabindex", "0");
+          circle.setAttribute("role", "treeitem");
+          circle.setAttribute("aria-expanded", node.expanded ? "true" : "false");
+          circle.setAttribute("aria-label", `${node.name}, status: ${node.status || "None"}`);
+
+          // Node name
+          const nameEl = document.createElement("div");
+          nameEl.className = "node-name";
+          nameEl.textContent = node.name;
+          circle.appendChild(nameEl);
+
+          // Status badge if any
+          if (node.status) {
+            const statusEl = document.createElement("div");
+            statusEl.className = "node-status";
+            statusEl.textContent = node.status;
+            circle.appendChild(statusEl);
+          }
+
+          // Description if any
+          if (node.description) {
+            const descEl = document.createElement("div");
+            descEl.className = "node-description";
+            descEl.textContent = node.description;
+            circle.appendChild(descEl);
+          }
+
+          nodeElem.appendChild(circle);
+
+          // Expand/collapse icon if has children
+          if (node.children.length > 0) {
+            const expandIcon = document.createElement("div");
+            expandIcon.className = "expand-icon";
+            expandIcon.setAttribute("aria-label", node.expanded ? "Collapse children" : "Expand children");
+            expandIcon.setAttribute("role", "button");
+            expandIcon.setAttribute("tabindex", "0");
+            expandIcon.textContent = node.expanded ? "−" : "+";
+            nodeElem.appendChild(expandIcon);
+
+            expandIcon.addEventListener("click", e => {
+              e.stopPropagation();
+              node.expanded = !node.expanded;
+              renderApp();
+            });
+            expandIcon.addEventListener("keydown", e => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                expandIcon.click();
+              }
+            });
+          }
+
+          // Children container (recursive)
+          if (node.expanded && node.children.length > 0) {
+            const childrenElems = renderTree(node.children, false, new Set(rendered));
+            if (childrenElems) nodeElem.appendChild(childrenElems);
+          }
+
+          // Context menu trigger on node circle click
+          circle.addEventListener("click", e => {
+            e.stopPropagation();
+            openContextMenu(node, circle);
+          });
+          circle.addEventListener("keydown", e => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              openContextMenu(node, circle);
+            }
+          });
+
+          container.appendChild(nodeElem);
+        });
+
+        return container;
+      }
+
+      // Clear and render entire app tree and parent select
+      function renderApp() {
+        buildNodeMap();
+        treeContainer.innerHTML = "";
+        if (treeData.length === 0) {
+          const emptyMsg = document.createElement("p");
+          emptyMsg.textContent = "No tasks added yet. Use the form above to add a main node.";
+          emptyMsg.style.textAlign = "center";
+          emptyMsg.style.color = "#6b7280";
+          treeContainer.appendChild(emptyMsg);
+        } else {
+          const treeElems = renderTree(treeData);
+          if (treeElems) treeContainer.appendChild(treeElems);
+          // After DOM is updated, draw connection lines
+          requestAnimationFrame(() => {
+            createConnectionLines();
+          });
+        }
+
+        renderParentNodeOptions();
+
+        if (editingNodeId !== null) {
+          disableInvalidParentOptions(editingNodeId);
+        }
+      }
+
+      // Disable parent options that would cause circular references (self or descendants)
+      function disableInvalidParentOptions(nodeId) {
+        // Find all descendants of nodeId
+        const descendants = new Set();
+        function collectDescendants(id) {
+          const node = findNodeById(id);
+          if (!node) return;
+          node.children.forEach(child => {
+            descendants.add(child.id);
+            collectDescendants(child.id);
+          });
+        }
+        collectDescendants(nodeId);
+
+        for (const option of parentNodeSelect.options) {
+          const val = option.value;
+          if (val === "") {
+            option.disabled = false;
+            continue;
+          }
+          const valNum = parseInt(val, 10);
+          if (valNum === nodeId || descendants.has(valNum)) {
+            option.disabled = true;
+            option.textContent = option.textContent + " (Invalid)";
+          }
+        }
+      }
+
+      // Form submit handler
+      form.addEventListener("submit", e => {
+        e.preventDefault();
+        const name = taskNameInput.value.trim();
+        if (!name) {
+          alert("Task Name is required.");
+          taskNameInput.focus();
+          return;
+        }
+        const description = taskDescriptionInput.value.trim();
+        const status = taskStatusSelect.value || "";
+        const parentId = parentNodeSelect.value ? parseInt(parentNodeSelect.value, 10) : null;
+        const addCommon = commonAddCheckbox.checked;
+
+        if (editingNodeId === null) {
+          if (addCommon) {
+            // Show modal to select multiple parent nodes
+            const allNodes = flattenTree();
+            if (allNodes.length === 0) {
+              // No nodes at all, add as main node directly
+              const newNode = {
+                id: nodeIdCounter++,
+                name,
+                description,
+                status,
+                children: [],
+                expanded: true,
+                parents: new Set(),
+              };
+              treeData.push(newNode);
+              resetForm();
+              renderApp();
+              return;
+            }
+            openCommonParentModal(allNodes, { name, description, status });
+          } else {
+            // Add new node normally
+            const newNode = {
+              id: nodeIdCounter++,
+              name,
+              description,
+              status,
+              children: [],
+              expanded: true,
+              parents: new Set(),
+            };
+            if (parentId === null) {
+              // Add as main node
+              treeData.push(newNode);
+            } else {
+              const parentNode = findNodeById(parentId);
+              if (parentNode) {
+                parentNode.children.push(newNode);
+                newNode.parents.add(parentNode.id);
+                parentNode.expanded = true; // auto expand parent
+              } else {
+                // fallback: add as main node
+                treeData.push(newNode);
+              }
+            }
+            resetForm();
+            renderApp();
+          }
+        } else {
+          // Edit existing node
+          const node = findNodeById(editingNodeId);
+          if (!node) {
+            alert("Node to edit not found.");
+            resetForm();
+            return;
+          }
+          // If parent changed, move node in tree
+          const currentParents = findParents(node);
+          const currentParentIds = new Set(currentParents.map(p => p.id));
+          if ((parentId === null && currentParentIds.size > 0) || (parentId !== null && !currentParentIds.has(parentId))) {
+            // Remove from all current parents
+            currentParents.forEach(p => {
+              p.children = p.children.filter(c => c.id !== node.id);
+              node.parents.delete(p.id);
+            });
+            // Add to new parent or root
+            if (parentId === null) {
+              treeData.push(node);
+              node.parents.clear();
+            } else {
+              const newParent = findNodeById(parentId);
+              if (newParent) {
+                newParent.children.push(node);
+                node.parents.add(newParent.id);
+                newParent.expanded = true;
+              } else {
+                treeData.push(node);
+                node.parents.clear();
+              }
+            }
+          }
+          // Update node data
+          node.name = name;
+          node.description = description;
+          node.status = status;
+
+          resetForm();
+          renderApp();
+        }
+      });
+
+      // Reset form to initial state
+      function resetForm() {
+        form.reset();
+        editingNodeId = null;
+        submitBtn.textContent = "Add Node";
+        cancelEditBtn.style.display = "none";
+        parentNodeSelect.disabled = false;
+        commonAddCheckbox.checked = false;
+        commonAddCheckbox.disabled = false;
+        // Remove any disabled options text
+        for (const option of parentNodeSelect.options) {
+          if (option.textContent.endsWith(" (Invalid)")) {
+            option.textContent = option.textContent.replace(" (Invalid)", "");
+          }
+          option.disabled = false;
+        }
+      }
+
+      // Cancel edit button handler
+      cancelEditBtn.addEventListener("click", () => {
+        resetForm();
+      });
+
+      // Context menu management
+      let currentContextMenu = null;
+
+      function openContextMenu(node, anchorElem) {
+        closeContextMenu();
+
+        const menu = document.createElement("div");
+        menu.className = "context-menu";
+        menu.setAttribute("role", "menu");
+        menu.setAttribute("aria-label", `Options for ${node.name}`);
+
+        // Add Child button
+        const addChildBtn = document.createElement("button");
+        addChildBtn.type = "button";
+        addChildBtn.textContent = "Add Child";
+        addChildBtn.setAttribute("role", "menuitem");
+        addChildBtn.addEventListener("click", () => {
+          closeContextMenu();
+          startAddChild(node.id);
+        });
+        menu.appendChild(addChildBtn);
+
+        // Edit button
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.textContent = "Edit";
+        editBtn.setAttribute("role", "menuitem");
+        editBtn.addEventListener("click", () => {
+          closeContextMenu();
+          startEditNode(node.id);
+        });
+        menu.appendChild(editBtn);
+
+        // Delete button
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.textContent = "Delete";
+        deleteBtn.setAttribute("role", "menuitem");
+        deleteBtn.addEventListener("click", () => {
+          closeContextMenu();
+          deleteNode(node.id);
+        });
+        menu.appendChild(deleteBtn);
+
+        // Position menu near anchorElem
+        const rect = anchorElem.getBoundingClientRect();
+        const containerRect = treeContainer.getBoundingClientRect();
+
+        menu.style.position = "absolute";
+        menu.style.top = `${rect.bottom - containerRect.top + treeContainer.scrollTop + 6}px`;
+        menu.style.left = `${rect.left - containerRect.left + treeContainer.scrollLeft}px`;
+
+        treeContainer.appendChild(menu);
+        currentContextMenu = menu;
+
+        // Focus first menu item
+        addChildBtn.focus();
+
+        // Close menu on outside click or Escape
+        function onClickOutside(e) {
+          if (!menu.contains(e.target)) {
+            closeContextMenu();
+          }
+        }
+        function onKeyDown(e) {
+          if (e.key === "Escape") {
+            closeContextMenu();
+            anchorElem.focus();
+          }
+        }
+        document.addEventListener("mousedown", onClickOutside);
+        document.addEventListener("keydown", onKeyDown);
+
+        menu._cleanup = () => {
+          document.removeEventListener("mousedown", onClickOutside);
+          document.removeEventListener("keydown", onKeyDown);
+        };
+      }
+
+      function closeContextMenu() {
+        if (currentContextMenu) {
+          currentContextMenu._cleanup?.();
+          currentContextMenu.remove();
+          currentContextMenu = null;
+        }
+      }
+
+      // Start adding child node under parentId
+      function startAddChild(parentId) {
+        resetForm();
+        editingNodeId = null;
+        submitBtn.textContent = "Add Node";
+        cancelEditBtn.style.display = "none";
+        parentNodeSelect.disabled = true;
+        parentNodeSelect.value = parentId;
+        commonAddCheckbox.checked = false;
+        commonAddCheckbox.disabled = true;
+        taskNameInput.focus();
+      }
+
+      // Start editing node by id
+      function startEditNode(nodeId) {
+        const node = findNodeById(nodeId);
+        if (!node) return;
+        editingNodeId = nodeId;
+        submitBtn.textContent = "Save Changes";
+        cancelEditBtn.style.display = "inline-block";
+        taskNameInput.value = node.name;
+        taskDescriptionInput.value = node.description || "";
+        taskStatusSelect.value = node.status || "";
+        parentNodeSelect.disabled = false;
+        commonAddCheckbox.checked = false;
+        commonAddCheckbox.disabled = true;
+        parentNodeSelect.value = "";
+        // Set parent select to current parent (if multiple parents, pick first)
+        const parents = findParents(node);
+        if (parents.length > 0) {
+          parentNodeSelect.value = parents[0].id;
+        } else {
+          parentNodeSelect.value = "";
+        }
+        // Disable invalid parent options (self and descendants)
+        renderParentNodeOptions();
+        disableInvalidParentOptions(nodeId);
+        taskNameInput.focus();
+      }
+
+      // Delete node by id with confirmation
+      function deleteNode(nodeId) {
+        const node = findNodeById(nodeId);
+        if (!node) return;
+        const confirmDelete = confirm(
+          `Are you sure you want to delete "${node.name}" and all its child tasks?`
+        );
+        if (!confirmDelete) return;
+
+        removeNodeCompletely(nodeId);
+        if (editingNodeId === nodeId) {
+          resetForm();
+        }
+        renderApp();
+      }
+
+      // Close context menu on clicking outside tree container
+      document.body.addEventListener("click", e => {
+        if (!treeContainer.contains(e.target)) {
+          closeContextMenu();
+        }
+      });
+
+      // Keyboard navigation: close context menu on Escape globally
+      document.body.addEventListener("keydown", e => {
+        if (e.key === "Escape") {
+          closeContextMenu();
+        }
+      });
+
+      // Modal logic for selecting multiple parent nodes
+      function openCommonParentModal(allNodes, newNodeData) {
+        // Clear previous list
+        parentsList.innerHTML = "";
+        modalConfirmBtn.disabled = true;
+
+        // Create checkbox list for all nodes
+        allNodes.forEach(node => {
+          const label = document.createElement("label");
+          label.setAttribute("tabindex", "-1");
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.value = node.id;
+          checkbox.setAttribute("aria-label", `Select parent node ${node.name}`);
+          checkbox.addEventListener("change", () => {
+            const anyChecked = parentsList.querySelectorAll("input[type=checkbox]:checked").length > 0;
+            modalConfirmBtn.disabled = !anyChecked;
+          });
+          label.appendChild(checkbox);
+          label.appendChild(document.createTextNode(node.name));
+          parentsList.appendChild(label);
+        });
+
+        // Show modal
+        commonParentModal.classList.add("active");
+        modalConfirmBtn.focus();
+
+        // Confirm handler
+        function onConfirm() {
+          const selectedIds = Array.from(parentsList.querySelectorAll("input[type=checkbox]:checked")).map(cb => parseInt(cb.value, 10));
+          if (selectedIds.length === 0) return;
+
+          // Check if a node with same name already exists (case-insensitive)
+          // If yes, reuse that node and add parents accordingly
+          // Else create new node and add parents
+
+          // Find existing node with same name (case-insensitive)
+          let existingNode = null;
+          for (const node of nodeMap.values()) {
+            if (node.name.toLowerCase() === newNodeData.name.toLowerCase()) {
+              existingNode = node;
+              break;
+            }
+          }
+
+          if (existingNode) {
+            // Add selected parents to existing node's parents set and add node to their children if not already present
+            selectedIds.forEach(pid => {
+              const parentNode = findNodeById(pid);
+              if (!parentNode) return;
+              if (!existingNode.parents.has(pid)) {
+                existingNode.parents.add(pid);
+                parentNode.children.push(existingNode);
+                parentNode.expanded = true;
+              }
+            });
+          } else {
+            // Create new node with parents set
+            const newNode = {
+              id: nodeIdCounter++,
+              name: newNodeData.name,
+              description: newNodeData.description,
+              status: newNodeData.status,
+              children: [],
+              expanded: true,
+              parents: new Set(selectedIds),
+            };
+            // Add new node to each selected parent's children
+            selectedIds.forEach(pid => {
+              const parentNode = findNodeById(pid);
+              if (!parentNode) return;
+              parentNode.children.push(newNode);
+              parentNode.expanded = true;
+            });
+          }
+
+          closeModal();
+          resetForm();
+          renderApp();
+        }
+
+        // Cancel handler
+        function onCancel() {
+          closeModal();
+        }
+
+        function closeModal() {
+          commonParentModal.classList.remove("active");
+          modalConfirmBtn.removeEventListener("click", onConfirm);
+          modalCancelBtn.removeEventListener("click", onCancel);
+          document.removeEventListener("keydown", onKeyDown);
+          taskNameInput.focus();
+        }
+
+        function onKeyDown(e) {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            closeModal();
+          }
+          if (e.key === "Tab") {
+            // Trap focus inside modal
+            const focusable = commonParentModal.querySelectorAll("input, button");
+            if (focusable.length === 0) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey) {
+              if (document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+              }
+            } else {
+              if (document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+              }
+            }
+          }
+        }
+
+        modalConfirmBtn.addEventListener("click", onConfirm);
+        modalCancelBtn.addEventListener("click", onCancel);
+        document.addEventListener("keydown", onKeyDown);
+      }
+
+      // Initial render
+      renderApp();
+    })();
+  </script>
+</body>
+</html>
